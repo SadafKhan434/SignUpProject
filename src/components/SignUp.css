@@ -1,0 +1,71 @@
+
+.page-wrapper {
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  background-color: #ffffff;
+}
+
+
+.custom-navbar {
+  border-bottom: 1px solid #eeeeee;
+  padding: 15px 40px;
+}
+
+.brand-title {
+  font-weight: bold;
+  font-size: 24px;
+}
+
+
+.background-accent-shape {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 45%;
+  height: 65%;
+  background-color: #007bff;
+  border-bottom-left-radius: 90% 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+
+.form-content-area {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 80px);
+  padding-bottom: 40px;
+}
+
+.signup-card-wrapper {
+  width: 100%;
+  max-width: 360px;
+}
+
+
+.custom-form-card {
+  border: 1px solid #dddddd !important;
+  border-radius: 4px !important;
+  background-color: #ffffff;
+}
+
+
+.login-redirect-card {
+  border: 1px solid #b2d8d8;
+  background-color: #f2f9f9;
+  border-radius: 4px;
+  text-align: center;
+  padding: 12px;
+  font-size: 14px;
+}
+
+.login-link-action {
+  color: #333333;
+  text-decoration: underline;
+  font-weight: 500;
+}
