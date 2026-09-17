@@ -2,34 +2,26 @@ import React, { useState } from 'react';
 import { Navbar, Nav, Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { FIREBASE_API_KEY } from '../firebase';
-import './SignUp.css';
+import './SignUp.css'; 
 
-const Signup = () => {
+const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   
   const navigate = useNavigate();
 
-  const isFormFilled = email.trim() !== '' && password.trim() !== '' && confirmPassword.trim() !== '';
+  const isFormFilled = email.trim() !== '' && password.trim() !== '';
 
-  const handleRegisterUser = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess(false);
-
-    if (password !== confirmPassword) {
-      return setError('Passwords do not match.');
-    }
+    setLoading(true);
 
     try {
-      setLoading(true);
-
-
-      const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`, {
+      
+      const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -44,22 +36,15 @@ const Signup = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        
-        throw new Error(data.error?.message || 'An error occurred during sign up.');
+
+        throw new Error(data.error?.message || 'Invalid email or password.');
       }
 
-      console.log('User has successfully signed up via REST API.');
-      setSuccess(true);
       
-      setEmail('');
-      setPassword('');
-      setConfirmPassword('');
+      localStorage.setItem('token', data.idToken);
       
       
-      setTimeout(() => {
-        navigate('/login');
-      }, 1500);
-
+      navigate('/welcome');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -72,9 +57,7 @@ const Signup = () => {
       <div className="background-accent-shape"></div>
       
       <Navbar bg="white" variant="light" className="custom-navbar">
-        <Navbar.Brand href="#home">
-          <span className="text-primary brand-title">MyWebLink</span>
-        </Navbar.Brand>
+        <Navbar.Brand href="#home"><span className="text-primary brand-title">MyWebLink</span></Navbar.Brand>
         <Nav className="me-auto ms-3">
           <Nav.Link href="#home" className="px-3 text-secondary small">Home</Nav.Link>
           <Nav.Link href="#products" className="px-3 text-secondary small">Products</Nav.Link>
@@ -86,34 +69,29 @@ const Signup = () => {
         <div className="signup-card-wrapper">
           <Card className="custom-form-card shadow-none mb-3">
             <Card.Body className="p-4">
-              <h2 className="text-center mb-4 fw-normal text-dark" style={{ fontSize: '26px' }}>SignUp</h2>
+              <h2 className="text-center mb-4 fw-normal text-dark" style={{ fontSize: '26px' }}>Login</h2>
               
               {error && <Alert variant="danger" className="py-2 small">{error}</Alert>}
-              {success && <Alert variant="success" className="py-2 small">Sign up success! Redirecting...</Alert>}
               
-              <Form onSubmit={handleRegisterUser}>
+              <Form onSubmit={handleLogin}>
                 <Form.Group className="mb-3" controlId="userEmail">
                   <Form.Control type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="py-2 bg-light border-light text-muted small" required />
                 </Form.Group>
 
-                <Form.Group className="mb-3" controlId="userPassword">
+                <Form.Group className="mb-4" controlId="userPassword">
                   <Form.Control type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="py-2 bg-light border-light text-muted small" required />
                 </Form.Group>
 
-                <Form.Group className="mb-4" controlId="userConfirmPassword">
-                  <Form.Control type="password" placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="py-2 bg-light border-light text-muted small" required />
-                </Form.Group>
-
                 <Button className="w-100 rounded-pill py-2 shadow-none" variant="primary" type="submit" disabled={!isFormFilled || loading} style={{ backgroundColor: '#0091ff', border: 'none' }}>
-                  {loading ? <Spinner animation="border" size="sm" /> : 'Sign up'}
+                  {loading ? <Spinner animation="border" size="sm" /> : 'Login'}
                 </Button>
               </Form>
             </Card.Body>
           </Card>
 
           <div className="login-redirect-card text-center">
-            <span className="text-muted">Have an account? </span>
-            <Button variant="link" onClick={() => navigate('/login')} className="p-0 text-decoration-none small fw-bold" style={{ color: '#0091ff' }}>Login</Button>
+            <span className="text-muted">Don't have an account? </span>
+            <Button variant="link" onClick={() => navigate('/signup')} className="p-0 text-decoration-none small fw-bold" style={{ color: '#0091ff' }}>SignUp</Button>
           </div>
         </div>
       </div>
@@ -121,4 +99,4 @@ const Signup = () => {
   );
 };
 
-export default Signup;
+export default Login;
