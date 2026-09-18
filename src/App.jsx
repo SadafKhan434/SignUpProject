@@ -3,10 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Signup from './components/SignUp';
 import Login from './components/Login';
 import Welcome from './components/Welcome';
+import MailDashboard from './components/MailDashboard';
 import 'bootstrap/dist/css/bootstrap.min.css'; 
 
 function App() {
-
+  
   const isAuthenticated = () => !!localStorage.getItem('token');
 
   return (
@@ -19,13 +20,18 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
           
-        
+          
           <Route 
             path="/welcome" 
             element={isAuthenticated() ? <Welcome /> : <Navigate to="/login" replace />} 
           />
           
-        
+          <Route 
+            path="/dashboard" 
+            element={isAuthenticated() ? <MailDashboard /> : <Navigate to="/login" replace />} 
+          />
+          
+          
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>

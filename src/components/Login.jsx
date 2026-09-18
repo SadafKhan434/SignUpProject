@@ -40,10 +40,11 @@ const Login = () => {
         throw new Error(data.error?.message || 'Invalid email or password.');
       }
 
-      
+      const normalizedEmail = email.trim().toLowerCase();
+
       localStorage.setItem('token', data.idToken);
-      
-      
+      localStorage.setItem('userEmail', normalizedEmail);
+
       navigate('/welcome');
     } catch (err) {
       setError(err.message);
