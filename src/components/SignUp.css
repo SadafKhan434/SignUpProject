@@ -6,7 +6,6 @@
   background-color: #ffffff;
 }
 
-
 .custom-navbar {
   border-bottom: 1px solid #eeeeee;
   padding: 15px 40px;
@@ -30,7 +29,6 @@
   pointer-events: none;
 }
 
-
 .form-content-area {
   position: relative;
   z-index: 2;
@@ -47,13 +45,11 @@
   max-width: 360px;
 }
 
-
 .custom-form-card {
   border: 1px solid #dddddd !important;
   border-radius: 4px !important;
   background-color: #ffffff;
 }
-
 
 .login-redirect-card {
   border: 1px solid #b2d8d8;
@@ -67,5 +63,35 @@
 .login-link-action {
   color: #333333;
   text-decoration: underline;
-  font-weight: 500;
+  font-weight: 5rem;
+}
+ .borderless-quill-container .ql-container.ql-snow {
+  border: none !important;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif !important;
+  font-size: 14px !important;
+}
+.borderless-quill-container .ql-editor {
+  padding: 0 !important;
+}
+
+
+.borderless-quill-container .ql-editor.ql-blank::before {
+  left: 0 !important;
+  right: 0 !important;
+  font-style: normal !important;
+  color: #adb5bd !important;
+}
+
+.list-group-item-action {
+  transition: background-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+
+.list-group-item-action:hover {
+  background-color: #f4f7f9 !important;
+  box-shadow: inset 1px 0 0 #0091ff !important;
+}
+
+
+.form-check-input:css-override {
+  cursor: pointer;
 }
