@@ -3,7 +3,6 @@ import { Navbar, Row, Col, Card, Form, Button, Alert, Spinner } from 'react-boot
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 
-
 import Sidebar from './Sidebar';
 import MailList from './MailList';
 import MailDetailView from './MailDetailView';
@@ -20,12 +19,13 @@ const MailDashboard = () => {
   const [receiver, setReceiver] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const [mailSourceFolder, setMailSourceFolder] = useState('inbox');
 
   const token = localStorage.getItem('token');
-  const rawEmail = localStorage.getItem('userEmail') || 'riya23@gmail.com';
-  const safeUserKey = rawEmail.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+  const rawEmail = (localStorage.getItem('userEmail') || '').trim();
+  const safeUserKey = rawEmail.toLowerCase().replace(/[^a-z0-9]/g, '_');
 
-  const getFolderName = () => (view === 'view-mail' ? 'inbox' : view);
+  const getFolderName = () => (view === 'view-mail' ? mailSourceFolder : view);
 
   const getMailUrl = (folder, id = '') => {
     const baseUrl = `${FIREBASE_DB_URL}/mails/${safeUserKey}/${folder}`;
@@ -43,6 +43,7 @@ const MailDashboard = () => {
   });
 
   const loadMailboxData = async () => {
+    if (view === 'compose' || view === 'view-mail') return;
     if (mails.length === 0) setLoading(true);
 
     try {
@@ -63,8 +64,8 @@ const MailDashboard = () => {
       setMails(normalizedList);
 
       if (targetFolder === 'inbox') {
-        const count = normalizedList.filter((mail) => !mail.isRead).length;
-        setUnreadCount(count);
+        const unreadMailCount = normalizedList.filter((mail) => !mail.isRead).length;
+        setUnreadCount(unreadMailCount);
       }
     } catch (err) {
       console.error(err);
@@ -74,7 +75,7 @@ const MailDashboard = () => {
   };
 
   useEffect(() => {
-    if (view === 'compose') return;
+    if (view === 'compose' || view === 'view-mail') return;
 
     loadMailboxData();
     const liveTimer = setInterval(() => loadMailboxData(), 3000);
@@ -82,6 +83,7 @@ const MailDashboard = () => {
   }, [view]);
 
   const handleOpenEmailRow = async (selectedItem) => {
+    setMailSourceFolder(view);
     setSelectedMail(selectedItem);
     setView('view-mail');
 
@@ -93,6 +95,11 @@ const MailDashboard = () => {
         });
 
         setUnreadCount((prev) => Math.max(0, prev - 1));
+        setMails((currentMails) =>
+          currentMails.map((mail) =>
+            mail.id === selectedItem.id ? { ...mail, isRead: true } : mail
+          )
+        );
       } catch (err) {
         console.error(err);
       }
@@ -110,14 +117,14 @@ const MailDashboard = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Delete request failed');
+        throw new Error('Delete operation failed');
       }
 
       setMails((currentMails) => currentMails.filter((mail) => mail.id !== mailToDelete.id));
 
       if (selectedMail && selectedMail.id === mailToDelete.id) {
         setSelectedMail(null);
-        setView('inbox');
+        setView(mailSourceFolder || 'inbox');
       }
 
       if (folderToDelete === 'inbox' && !mailToDelete.isRead) {
@@ -136,12 +143,18 @@ const MailDashboard = () => {
     setLoading(true);
     setAlertMsg({ type: '', text: '' });
 
+    if (!token || !rawEmail) {
+      setAlertMsg({ type: 'danger', text: 'Please log in again before sending mail.' });
+      setLoading(false);
+      return;
+    }
+
     const cleanReceiverKey = receiver.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
     const emailPayload = {
-      sender: rawEmail.trim().toLowerCase(),
+      sender: rawEmail.toLowerCase(),
       receiver: receiver.trim().toLowerCase(),
       subject: subject.trim() || '(No Subject)',
-      body: body,
+      body,
       timestamp: new Date().toISOString(),
       isRead: false
     };
@@ -151,13 +164,16 @@ const MailDashboard = () => {
         method: 'POST',
         body: JSON.stringify({ ...emailPayload, isRead: true })
       });
+
       await fetch(`${FIREBASE_DB_URL}/mails/${cleanReceiverKey}/inbox.json?auth=${token}`, {
         method: 'POST',
         body: JSON.stringify(emailPayload)
       });
 
       setAlertMsg({ type: 'success', text: 'Message delivered successfully!' });
-      setReceiver(''); setSubject(''); setBody('');
+      setReceiver('');
+      setSubject('');
+      setBody('');
       setView('sent');
     } catch (err) {
       setAlertMsg({ type: 'danger', text: 'Delivery failed.' });
@@ -169,8 +185,9 @@ const MailDashboard = () => {
   return (
     <div style={{ minHeight: '100vh', background: '#f8f9fa', padding: '20px' }}>
       <Navbar bg="white" className="border shadow-sm mb-4 rounded px-4 py-2 d-flex justify-content-between">
-        <Navbar.Brand className="fw-bold text-primary">MyWebLink <span className="text-secondary fw-normal fs-6">Mail Dashboard</span></Navbar.Brand>
-        <span className="badge bg-light text-dark border px-3 py-2 fw-normal">👤 {rawEmail}</span>
+        <Navbar.Brand className="fw-bold text-primary">
+          MyWebLink <span className="text-secondary fw-normal fs-6">Mail Dashboard</span>
+        </Navbar.Brand>
       </Navbar>
 
       <Row>
@@ -181,39 +198,84 @@ const MailDashboard = () => {
         <Col md={9}>
           {alertMsg.text && <Alert variant={alertMsg.type} className="py-2 small">{alertMsg.text}</Alert>}
 
-          
-          {(view === 'inbox' || view === 'sent') && (
-            loading ? (
-              <div className="text-center p-5 bg-white rounded border shadow-sm"><Spinner animation="border" variant="primary" /></div>
+          {(view === 'inbox' || view === 'sent') &&
+            (loading ? (
+              <div className="text-center p-5 bg-white rounded border shadow-sm">
+                <Spinner animation="border" variant="primary" />
+              </div>
             ) : (
-              <MailList view={view} mails={mails} onMailClick={handleOpenEmailRow} onDeleteMail={handleDeleteMail} />
-            )
-          )}
+              <MailList
+                view={view}
+                mails={mails}
+                onMailClick={handleOpenEmailRow}
+                onDeleteMail={handleDeleteMail}
+              />
+            ))}
 
-          
           {view === 'view-mail' && selectedMail && (
-            <MailDetailView selectedMail={selectedMail} onBackClick={() => setView('inbox')} />
+            <MailDetailView
+              selectedMail={selectedMail}
+              onBackClick={() => setView(mailSourceFolder || 'inbox')}
+            />
           )}
 
-          
           {view === 'compose' && (
             <Card className="border shadow-sm rounded-3 p-4 bg-white">
               <Form onSubmit={handleSendEmailSubmit}>
                 <Form.Group className="mb-3">
                   <Form.Label className="small fw-bold text-muted">To (Recipient Address)</Form.Label>
-                  <Form.Control type="email" placeholder="name@example.com" value={receiver} onChange={(e) => setReceiver(e.target.value)} required />
+                  <Form.Control
+                    type="email"
+                    placeholder="name@example.com"
+                    value={receiver}
+                    onChange={(e) => setReceiver(e.target.value)}
+                    required
+                  />
                 </Form.Group>
+
                 <Form.Group className="mb-3">
                   <Form.Label className="small fw-bold text-muted">Subject Heading</Form.Label>
-                  <Form.Control type="text" placeholder="Subject Title..." value={subject} onChange={(e) => setSubject(e.target.value)} />
+                  <Form.Control
+                    type="text"
+                    placeholder="Subject Title..."
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                  />
                 </Form.Group>
+
                 <Form.Group className="mb-4">
                   <Form.Label className="small fw-bold text-muted">Message Paragraph Text Body Editor</Form.Label>
-                  <ReactQuill theme="snow" value={body} onChange={setBody} style={{ height: '200px', background: '#fff' }} />
+                  <ReactQuill
+                    theme="snow"
+                    value={body}
+                    onChange={setBody}
+                    style={{ height: '200px', background: '#fff' }}
+                  />
                 </Form.Group>
+
                 <div className="d-flex justify-content-end gap-2 mt-5">
-                  <Button variant="light" size="sm" className="border px-3 rounded-pill" onClick={() => setView('inbox')}>Cancel</Button>
-                  <Button type="submit" size="sm" variant="primary" className="px-4 rounded-pill fw-bold border-0" style={{ backgroundColor: '#0091ff' }}>Send Message</Button>
+                  <Button
+                    type="button"
+                    variant="light"
+                    size="sm"
+                    className="border px-3 rounded-pill"
+                    onClick={() => setView('inbox')}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="primary"
+                    className="px-4 rounded-pill fw-bold border-0"
+                    style={{ backgroundColor: '#0091ff', cursor: 'pointer' }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleSendEmailSubmit(e);
+                    }}
+                  >
+                    Send Message
+                  </Button>
                 </div>
               </Form>
             </Card>

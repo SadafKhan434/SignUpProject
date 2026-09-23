@@ -92,6 +92,16 @@
 }
 
 
+button,
+.btn {
+  cursor: pointer !important;
+}
+
+button:disabled,
+.btn:disabled {
+  cursor: not-allowed !important;
+}
+
 .form-check-input:css-override {
   cursor: pointer;
 }
