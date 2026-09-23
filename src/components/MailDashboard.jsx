@@ -8,10 +8,10 @@ import Sidebar from './Sidebar';
 import MailList from './MailList';
 import MailDetailView from './MailDetailView';
 
-const FIREBASE_DB_URL = 'https://signupproject-a9e42-default-rtdb.firebaseio.com/mail.json';
+const FIREBASE_DB_URL = 'https://signupproject-a9e42-default-rtdb.firebaseio.com/mail';
 
 const MailDashboard = () => {
-  const [view, setView] = useState('inbox'); 
+  const [view, setView] = useState('inbox');
   const [mails, setMails] = useState([]);
   const [selectedMail, setSelectedMail] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -25,39 +25,46 @@ const MailDashboard = () => {
   const rawEmail = localStorage.getItem('userEmail') || 'riya23@gmail.com';
   const safeUserKey = rawEmail.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
 
-  
+  const getFolderName = () => (view === 'view-mail' ? 'inbox' : view);
+
+  const getMailUrl = (folder, id = '') => {
+    const baseUrl = `${FIREBASE_DB_URL}/mails/${safeUserKey}/${folder}`;
+    return id ? `${baseUrl}/${id}.json?auth=${token}` : `${baseUrl}.json?auth=${token}`;
+  };
+
+  const normalizeMail = (key, item) => ({
+    id: key,
+    sender: item.sender || item.Sender || item.from || item.From || 'Unknown System',
+    receiver: item.receiver || item.Receiver || item.to || item.To || '',
+    subject: item.subject || item.Subject || '(No Subject)',
+    body: item.body || item.Body || item.content || item.Content || '',
+    timestamp: item.timestamp || item.Timestamp || item.date || item.Date || '',
+    isRead: item.isRead !== undefined ? item.isRead : (item.IsRead !== undefined ? item.IsRead : false)
+  });
+
   const loadMailboxData = async () => {
     if (mails.length === 0) setLoading(true);
+
     try {
-      const targetFolder = (view === 'view-mail') ? 'inbox' : view;
-      const response = await fetch(`${FIREBASE_DB_URL}/mails/${safeUserKey}/${targetFolder}.json?auth=${token}`);
+      const targetFolder = getFolderName();
+      const response = await fetch(getMailUrl(targetFolder));
       const data = await response.json();
 
-      if (data) {
-        
-        const standardizedList = Object.keys(data).map((key) => {
-          const item = data[key];
-          return {
-            id: key,
-            sender: item.sender || item.Sender || item.from || item.From || 'Unknown System',
-            receiver: item.receiver || item.Receiver || item.to || item.To || '',
-            subject: item.subject || item.Subject || '(No Subject)',
-            body: item.body || item.Body || item.content || item.Content || '',
-            timestamp: item.timestamp || item.Timestamp || item.date || item.Date || '',
-            isRead: item.isRead !== undefined ? item.isRead : (item.IsRead !== undefined ? item.IsRead : false)
-          };
-        });
-
-        standardizedList.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        setMails(standardizedList);
-
-        if (targetFolder === 'inbox') {
-          const count = standardizedList.filter((m) => m.isRead === false).length;
-          setUnreadCount(count);
-        }
-      } else {
+      if (!data) {
         setMails([]);
         if (targetFolder === 'inbox') setUnreadCount(0);
+        return;
+      }
+
+      const normalizedList = Object.keys(data)
+        .map((key) => normalizeMail(key, data[key]))
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+      setMails(normalizedList);
+
+      if (targetFolder === 'inbox') {
+        const count = normalizedList.filter((mail) => !mail.isRead).length;
+        setUnreadCount(count);
       }
     } catch (err) {
       console.error(err);
@@ -66,29 +73,61 @@ const MailDashboard = () => {
     }
   };
 
-  
   useEffect(() => {
     if (view === 'compose') return;
+
     loadMailboxData();
-    const liveTimer = setInterval(() => { loadMailboxData(); }, 3000);
+    const liveTimer = setInterval(() => loadMailboxData(), 3000);
     return () => clearInterval(liveTimer);
   }, [view]);
 
-  
   const handleOpenEmailRow = async (selectedItem) => {
     setSelectedMail(selectedItem);
     setView('view-mail');
 
     if (view === 'inbox' && !selectedItem.isRead) {
       try {
-        await fetch(`${FIREBASE_DB_URL}/mails/${safeUserKey}/inbox/${selectedItem.id}.json?auth=${token}`, {
+        await fetch(getMailUrl('inbox', selectedItem.id), {
           method: 'PATCH',
           body: JSON.stringify({ isRead: true })
         });
+
         setUnreadCount((prev) => Math.max(0, prev - 1));
       } catch (err) {
         console.error(err);
       }
+    }
+  };
+
+  const handleDeleteMail = async (mailToDelete) => {
+    if (!mailToDelete || !mailToDelete.id) return;
+
+    const folderToDelete = getFolderName();
+
+    try {
+      const response = await fetch(getMailUrl(folderToDelete, mailToDelete.id), {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Delete request failed');
+      }
+
+      setMails((currentMails) => currentMails.filter((mail) => mail.id !== mailToDelete.id));
+
+      if (selectedMail && selectedMail.id === mailToDelete.id) {
+        setSelectedMail(null);
+        setView('inbox');
+      }
+
+      if (folderToDelete === 'inbox' && !mailToDelete.isRead) {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+
+      setAlertMsg({ type: 'success', text: 'Message deleted successfully.' });
+    } catch (err) {
+      console.error(err);
+      setAlertMsg({ type: 'danger', text: 'Failed to delete message.' });
     }
   };
 
@@ -147,7 +186,7 @@ const MailDashboard = () => {
             loading ? (
               <div className="text-center p-5 bg-white rounded border shadow-sm"><Spinner animation="border" variant="primary" /></div>
             ) : (
-              <MailList view={view} mails={mails} onMailClick={handleOpenEmailRow} />
+              <MailList view={view} mails={mails} onMailClick={handleOpenEmailRow} onDeleteMail={handleDeleteMail} />
             )
           )}
 
